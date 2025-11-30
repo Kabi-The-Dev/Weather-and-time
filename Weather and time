@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customizable Weather Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Varela Round -->
+    <link href="https://fonts.googleapis.com/css2?family=Varela+Round&display=swap" rel="stylesheet">
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <script>
+        // --- Custom Color Palettes and Tailwind Configuration ---
+        
+        // Define color schemes in JS for runtime use and in the Tailwind config for utility classes
+        const colorSchemes = {
+            'blue': { dark: '#3949ab', light: '#42a5f5', accent: '#3b82f6' }, // blue-500
+            'purple': { dark: '#673ab7', light: '#9575cd', accent: '#a855f7' }, // purple-500
+            'orange': { dark: '#ef6c00', light: '#ff9800', accent: '#f97316' }, // orange-500
+            'pink': { dark: '#e91e63', light: '#f06292', accent: '#ec4899' }, // pink-500
+            'yellow': { dark: '#ffeb3b', light: '#ffee58', accent: '#f59e0b' } // amber-500
+        };
+
+        // Tailwind Configuration to use CSS variables
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // Custom CSS variables used for dynamic theme colors
+                        'app-bg': 'var(--color-app-bg)',
+                        'card-bg': 'var(--color-card-bg)', 
+                        'text-primary': 'var(--color-text-primary)',
+                        'text-muted': 'var(--color-text-muted)',
+                        'accent-primary': 'var(--color-accent-primary)',
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        /* CSS Variables: Permanently set to Dark Mode values and initial blue theme */
+        :root {
+            /* Theme Mode (Dark) */
+            --color-app-bg: #1f2937; /* Dark Slate Background */
+            --color-card-bg: #111827; /* Very Dark Card Background */
+            --color-text-primary: #ffffff; /* White Text */
+            --color-text-muted: #9ca3af; /* Light Gray Muted Text */
+            
+            /* Initial Accent Color (Blue) */
+            --color-accent-primary: #3b82f6; 
+        }
+
+        /* Custom styles */
+        body {
+            font-family: 'Varela Round', sans-serif; 
+            transition: background-color 0.3s ease;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh; 
+            padding-bottom: 3rem;
+        }
+        
+        /* Apply the dynamic background color */
+        html {
+            background-color: var(--color-app-bg); 
+            color: var(--color-text-primary);
+        }
+
+        .weather-container {
+            max-width: 640px; /* Increased max width for better metric display */
+            width: 100%;
+            padding: 0 1rem;
+        }
+
+        .metric-card {
+            background-color: var(--color-card-bg);
+            box-shadow: 0 8px 15px -3px rgba(0, 0, 0, 0.4);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+            border-radius: 1.5rem; /* Rounded 3xl */
+        }
+        
+        .circle-metric {
+            border-radius: 9999px; 
+            aspect-ratio: 1; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 1.5rem;
+        }
+
+        .temp-display {
+            font-size: 7rem; 
+            line-height: 1;
+            font-weight: 500; 
+        }
+
+        /* Styling for the Color Picker dots */
+        .color-dot {
+            width: 32px;
+            height: 32px;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid transparent;
+        }
+        .color-dot:hover {
+            transform: scale(1.1);
+        }
+        .color-dot.selected {
+            border-color: var(--color-text-primary);
+            transform: scale(1.15);
+            box-shadow: 0 0 10px var(--color-accent-primary);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .temp-display {
+                font-size: 6rem; 
+            }
+        }
+
+        .metric-content-center {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+        
+        /* Custom scrollbar for forecast */
+        .forecast-scroll::-webkit-scrollbar {
+            height: 4px;
+        }
+        .forecast-scroll::-webkit-scrollbar-thumb {
+            background-color: var(--color-accent-primary);
+            border-radius: 2px;
+        }
+        .forecast-scroll::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="weather-container">
+        
+        <header class="flex justify-between items-center py-6 px-4">
+            <h2 id="headerLocation" class="text-2xl font-semibold text-text-primary truncate max-w-[70%]">Search City</h2>
+            <div class="flex gap-3">
+                <button id="unitToggle" onclick="toggleTemperatureUnit()" class="px-3 py-1 text-sm font-semibold rounded-full bg-white/10 text-text-primary transition duration-300 hover:bg-white/20">
+                    <span id="unitText">°C / °F</span>
+                </button>
+                <button id="colorPickerToggle" onclick="toggleColorPicker()" class="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-text-primary transition duration-300 hover:bg-white/20">
+                    <i data-lucide="palette" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </header>
+
+        <div id="colorPickerPanel" class="metric-card p-4 mx-4 mb-6 hidden transition-all duration-300">
+            <p class="text-sm font-semibold text-text-muted mb-3">Choose Accent Color:</p>
+            <div id="colorDots" class="flex justify-around">
+                <!-- Color dots will be generated here by JavaScript -->
+            </div>
+        </div>
+
+        <div id="statusMessage" class="text-center p-3 text-sm rounded-xl transition-all duration-300 min-h-[30px] mx-4 mb-6 bg-white/10 text-text-primary/80">
+            Enter a city to get the current weather. (API Key: e04f98bebbf54e718de154203253011)
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 mx-4 mb-10">
+            <input
+                type="text"
+                id="cityInput"
+                placeholder="Search city (e.g., London, Tokyo)..."
+                class="flex-grow p-4 rounded-full placeholder-gray-500 text-gray-900 bg-white focus:outline-none focus:ring-4 transition duration-200"
+                style="--tw-ring-color: var(--color-accent-primary); --tw-ring-opacity: 0.5;"
+            >
+            <button
+                id="searchButton"
+                class="bg-white font-bold py-4 px-6 rounded-full shadow-lg transition duration-200 ease-in-out hover:scale-[1.02] active:scale-[0.98]"
+                onclick="searchWeather()"
+            >
+                <i data-lucide="search" class="w-5 h-5 inline-block align-middle"></i>
+            </button>
+        </div>
+        
+        <div id="weatherResult" class="hidden">
+            
+            <!-- Main Temperature Card -->
+            <div class="main-card flex flex-col items-center justify-center p-4">
+                <img id="weatherIcon" src="" alt="Weather Icon" class="w-24 h-24 mb-2 filter drop-shadow-xl">
+                <p id="conditionText" class="text-xl text-text-primary font-medium capitalize mb-1"></p>
+                
+                <p class="temp-display text-text-primary flex items-start">
+                    <span id="tempValue">--</span>
+                    <sup id="tempUnit" class="text-6xl align-top font-normal -mt-2">°C</sup>
+                </p>
+                
+                <p class="text-2xl text-text-primary/90 font-medium mt-2">
+                    Feels like: <span id="feelsLikeValue">--</span><span id="feelsLikeUnit">°C</span>
+                </p>
+                <!-- High/Low will be updated by JS -->
+                <p class="text-lg text-text-primary/70 mt-1"></p> 
+            </div>
+            
+            <!-- Hourly Forecast (Mockup) -->
+            <div class="metric-card p-4 mt-8 mx-4">
+                <p class="text-sm font-semibold text-text-muted mb-3 flex items-center">
+                    <i data-lucide="clock" class="w-4 h-4 mr-2 text-text-muted"></i>
+                    Hourly Forecast (Mock Data)
+                </p>
+                <div class="flex overflow-x-auto space-x-5 pb-2 text-center forecast-scroll">
+                    <!-- Forecast items are mock data and not updated from API for brevity -->
+                    <div class="flex flex-col items-center flex-shrink-0 w-16">
+                        <span class="text-lg font-medium text-text-primary">20°</span>
+                        <i data-lucide="moon" class="w-6 h-6 my-1 text-text-muted"></i>
+                        <span class="text-xs text-text-muted">Now</span>
+                    </div>
+                    <div class="flex flex-col items-center flex-shrink-0 w-16">
+                        <span class="text-lg font-medium text-text-primary">19°</span>
+                        <i data-lucide="cloud" class="w-6 h-6 my-1 text-text-muted"></i>
+                        <span class="text-xs text-text-muted">10 pm</span>
+                    </div>
+                     <div class="flex flex-col items-center flex-shrink-0 w-16">
+                        <span class="text-lg font-medium text-text-primary">18°</span>
+                        <i data-lucide="cloud-lightning" class="w-6 h-6 my-1 text-text-muted"></i>
+                        <span class="text-xs text-text-muted">11 pm</span>
+                    </div>
+                     <div class="flex flex-col items-center flex-shrink-0 w-16">
+                        <span class="text-lg font-medium text-text-primary">17°</span>
+                        <i data-lucide="cloud-rain" class="w-6 h-6 my-1 text-text-muted"></i>
+                        <span class="text-xs text-text-muted">12 am</span>
+                    </div>
+                    <div class="flex flex-col items-center flex-shrink-0 w-16">
+                        <span class="text-lg font-medium text-text-primary">17°</span>
+                        <i data-lucide="cloud" class="w-6 h-6 my-1 text-text-muted"></i>
+                        <span class="text-xs text-text-muted">1 am</span>
+                    </div>
+                    <div class="flex flex-col items-center flex-shrink-0 w-16">
+                        <span class="text-lg font-medium text-text-primary">16°</span>
+                        <i data-lucide="sun" class="w-6 h-6 my-1 text-text-muted"></i>
+                        <span class="text-xs text-text-muted">2 am</span>
+                    </div>
+                    <div class="flex flex-col items-center flex-shrink-0 w-16">
+                        <span class="text-lg font-medium text-text-primary">15°</span>
+                        <i data-lucide="cloud-fog" class="w-6 h-6 my-1 text-text-muted"></i>
+                        <span class="text-xs text-text-muted">3 am</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Metrics Grid -->
+            <div class="grid grid-cols-2 gap-4 mt-8 mx-4">
+                
+                <!-- Precipitation -->
+                <div class="metric-card p-5 h-40 flex flex-col justify-between">
+                    <p class="text-sm font-semibold text-text-muted flex items-center">
+                        <i data-lucide="cloud-rain" class="w-4 h-4 mr-2" style="color: var(--color-accent-primary);"></i>Precipitation
+                    </p>
+                    <p class="text-5xl font-light text-text-primary mb-1"><span id="precipitationDisplay">--</span> mm</p>
+                    <p class="text-xs text-text-muted">Rain chance: <span id="chanceOfRain">--</span>%</p>
+                </div>
+                
+                <!-- Wind -->
+                <div class="metric-card p-5 h-40 flex flex-col justify-between">
+                     <p class="text-sm font-semibold text-text-muted flex items-center">
+                        <i data-lucide="wind" class="w-4 h-4 mr-2" style="color: var(--color-accent-primary);"></i>Wind
+                    </p>
+                    <div class="text-center pt-2">
+                        <span class="text-5xl font-light text-text-primary" id="windDisplay">--</span>
+                        <span class="text-lg text-text-muted"> km/h</span>
+                    </div>
+                    <p class="text-xs text-text-muted text-center">Direction: <span id="windDirDisplay">--</span></p>
+                </div>
+
+                <!-- Sunrise & Sunset -->
+                <div class="metric-card p-5 col-span-1 flex flex-col justify-center">
+                    <p class="text-sm font-semibold text-text-muted mb-4 flex items-center">
+                        <i data-lucide="sun-dim" class="w-4 h-4 mr-2" style="color: var(--color-accent-primary);"></i>Sunrise & Sunset
+                    </p>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <i data-lucide="sunrise" class="w-5 h-5 mr-3 text-orange-400"></i>
+                            <span class="text-xl font-medium text-text-primary" id="sunriseTime">--:-- am</span>
+                        </div>
+                        <div class="flex items-center">
+                            <i data-lucide="sunset" class="w-5 h-5 mr-3 text-red-400"></i>
+                            <span class="text-xl font-medium text-text-primary" id="sunsetTime">--:-- pm</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- UV Index (Circle Card) -->
+                <div class="metric-card circle-metric col-span-1 h-auto relative">
+                    <div class="metric-content-center">
+                        <i data-lucide="sun" class="w-5 h-5 text-yellow-400 mb-2"></i>
+                        <p class="text-sm font-semibold text-text-muted">UV Index</p>
+                        <p class="text-6xl font-light text-text-primary mt-2 mb-1" id="uvIndex">--</p>
+                        <p class="text-sm text-text-muted" id="uvLevel">--</p>
+                        <div id="uvIndicator" class="flex space-x-1.5 mt-3">
+                            <!-- UV level dots controlled by JS -->
+                            <div class="w-2 h-2 rounded-full bg-gray-500"></div>
+                            <div class="w-2 h-2 rounded-full bg-gray-500"></div>
+                            <div class="w-2 h-2 rounded-full bg-gray-500"></div>
+                            <div class="w-2 h-2 rounded-full bg-gray-500"></div>
+                            <div class="w-2 h-2 rounded-full bg-gray-500"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Visibility -->
+                <div class="metric-card p-5 h-40 flex flex-col justify-between">
+                    <p class="text-sm font-semibold text-text-muted flex items-center">
+                        <i data-lucide="eye" class="w-4 h-4 mr-2" style="color: var(--color-accent-primary);"></i>Visibility
+                    </p>
+                    <p class="text-5xl font-light text-text-primary mb-1"><span id="visibility">--</span> km</p>
+                    <p class="text-xs text-text-muted" id="visibilityStatus">--</p>
+                </div>
+                
+                <!-- Humidity & Dew Point -->
+                <div class="metric-card p-5 h-40 flex flex-col justify-between">
+                    <p class="text-sm font-semibold text-text-muted flex items-center">
+                        <i data-lucide="droplets" class="w-4 h-4 mr-2" style="color: var(--color-accent-primary);"></i>Humidity
+                    </p>
+                    <p class="text-6xl font-light text-text-primary mb-1"><span id="humidityDisplay">--</span>%</p>
+                    <p class="text-xs text-text-muted">Dew point <span id="dewPointDisplay">--</span>°</p>
+                </div>
+                
+                <!-- Pressure (Full-width card for visual break) -->
+                <div class="metric-card col-span-2 p-5 flex flex-col items-center justify-center h-32">
+                     <div class="metric-content-center">
+                        <i data-lucide="gauge" class="w-5 h-5 text-purple-400 mb-1"></i>
+                        <p class="text-sm font-semibold text-text-muted">Pressure</p>
+                        <p class="text-4xl font-light text-text-primary mt-1 mb-1"><span id="pressure">--</span> hPa</p>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-xs text-text-primary/50 mt-8 text-center px-4">
+                Data provided by WeatherAPI.com | Last Updated: <span id="lastUpdated">--</span>
+            </p>
+
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // --- Configuration & Constants ---
+        const API_KEY = 'e04f98bebbf54e718de154203253011'; // Placeholder Key
+        const API_BASE_URL = 'https://api.weatherapi.com/v1/forecast.json';
+        const MAX_RETRIES = 3;
+
+        // --- State Management ---
+        let currentWeatherData = null;
+        let currentUnit = localStorage.getItem('weatherUnit') || 'C'; // 'C' or 'F'
+        let currentColor = localStorage.getItem('weatherColor') || 'blue'; // 'blue', 'purple', etc.
+
+        // --- DOM Elements ---
+        const cityInput = document.getElementById('cityInput');
+        const searchButton = document.getElementById('searchButton');
+        const weatherResultDiv = document.getElementById('weatherResult');
+        const headerLocation = document.getElementById('headerLocation');
+        const lastUpdated = document.getElementById('lastUpdated');
+        const weatherIcon = document.getElementById('weatherIcon');
+        const conditionText = document.getElementById('conditionText');
+        const tempValue = document.getElementById('tempValue');
+        const tempUnit = document.getElementById('tempUnit');
+        const feelsLikeValue = document.getElementById('feelsLikeValue');
+        const feelsLikeUnit = document.getElementById('feelsLikeUnit');
+        
+        // UI Customization
+        const unitText = document.getElementById('unitText');
+        const statusMessage = document.getElementById('statusMessage');
+        const colorPickerPanel = document.getElementById('colorPickerPanel');
+        const colorDotsContainer = document.getElementById('colorDots');
+
+        // Metric Displays
+        const precipitationDisplay = document.getElementById('precipitationDisplay');
+        const chanceOfRain = document.getElementById('chanceOfRain');
+        const windDisplay = document.getElementById('windDisplay');
+        const windDirDisplay = document.getElementById('windDirDisplay');
+        const sunriseTime = document.getElementById('sunriseTime');
+        const sunsetTime = document.getElementById('sunsetTime');
+        const uvIndex = document.getElementById('uvIndex');
+        const uvLevel = document.getElementById('uvLevel');
+        const uvIndicator = document.getElementById('uvIndicator');
+        const visibility = document.getElementById('visibility');
+        const visibilityStatus = document.getElementById('visibilityStatus');
+        const humidityDisplay = document.getElementById('humidityDisplay');
+        const dewPointDisplay = document.getElementById('dewPointDisplay');
+        const pressure = document.getElementById('pressure');
+        
+        /**
+         * Converts a weather object to the currently selected unit.
+         * @param {object} data - The weather API response data (current and forecast).
+         * @returns {object} The formatted data object.
+         */
+        function formatWeatherData(data) {
+            const isC = currentUnit === 'C';
+            
+            const current = data.current;
+            const forecastDay = data.forecast.forecastday[0].day;
+            const astro = data.forecast.forecastday[0].astro;
+
+            const temp = isC ? current.temp_c : current.temp_f;
+            const feelsLike = isC ? current.feelslike_c : current.feelslike_f;
+            const maxTemp = isC ? forecastDay.maxtemp_c : forecastDay.maxtemp_f;
+            const minTemp = isC ? forecastDay.mintemp_c : forecastDay.mintemp_f;
+            const dewPoint = isC ? current.dewpoint_c : current.dewpoint_f;
+
+            return {
+                location: data.location.name,
+                country: data.location.country,
+                temp: Math.round(temp),
+                feelsLike: Math.round(feelsLike),
+                maxTemp: Math.round(maxTemp),
+                minTemp: Math.round(minTemp),
+                conditionText: current.condition.text,
+                conditionIcon: current.condition.icon.replace('64x64', '128x128'), // High res icon
+                precipitation: current.precip_mm, 
+                chanceOfRain: forecastDay.daily_chance_of_rain, // Using daily chance for simplicity
+                humidity: current.humidity,
+                windKph: current.wind_kph,
+                windDir: current.wind_dir,
+                pressureHpa: current.pressure_mb,
+                uvIndex: current.uv,
+                visibilityKm: current.vis_km,
+                sunrise: astro.sunrise,
+                sunset: astro.sunset,
+                dewPoint: Math.round(dewPoint),
+                lastUpdated: new Date(data.current.last_updated_epoch * 1000).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+            };
+        }
+
+        /**
+         * Updates the UI elements with the formatted weather data.
+         * @param {object} data - The formatted weather data.
+         */
+        function updateUI(data) {
+            headerLocation.textContent = `${data.location}, ${data.country}`;
+            weatherIcon.src = data.conditionIcon;
+            weatherIcon.alt = data.conditionText;
+            conditionText.textContent = data.conditionText;
+            
+            // Temperature Display
+            const unitSymbol = `°${currentUnit}`;
+            tempValue.textContent = data.temp;
+            tempUnit.textContent = unitSymbol;
+            feelsLikeValue.textContent = data.feelsLike;
+            feelsLikeUnit.textContent = unitSymbol;
+            
+            // High/Low
+            const highLowElement = document.querySelector('.main-card > p:last-child');
+            highLowElement.innerHTML = `High <span class="font-semibold">${data.maxTemp}°</span> · Low <span class="font-semibold">${data.minTemp}°</span>`;
+
+            // Metric Updates
+            precipitationDisplay.textContent = data.precipitation;
+            chanceOfRain.textContent = data.chanceOfRain;
+            windDisplay.textContent = Math.round(data.windKph);
+            windDirDisplay.textContent = data.windDir;
+            sunriseTime.textContent = data.sunrise.replace(' ', '').toLowerCase();
+            sunsetTime.textContent = data.sunset.replace(' ', '').toLowerCase();
+            uvIndex.textContent = data.uvIndex;
+            uvLevel.textContent = getUvLevelText(data.uvIndex);
+            updateUvIndicator(data.uvIndex);
+            visibility.textContent = data.visibilityKm;
+            visibilityStatus.textContent = getVisibilityStatus(data.visibilityKm);
+            humidityDisplay.textContent = data.humidity;
+            dewPointDisplay.textContent = data.dewPoint;
+            pressure.textContent = data.pressureHpa;
+
+            lastUpdated.textContent = data.lastUpdated;
+
+            weatherResultDiv.classList.remove('hidden');
+            hideStatusMessage();
+        }
+
+        /**
+         * Fetches weather data for a given city with retry logic.
+         * @param {string} city - The name of the city.
+         * @param {number} attempt - Current retry attempt.
+         */
+        async function fetchWeather(city, attempt = 1) {
+            showStatusMessage('Fetching weather data...', 'bg-white/10 text-text-primary/80');
+            const url = `${API_BASE_URL}?key=${API_KEY}&q=${city}&days=1`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (response.ok) {
+                    currentWeatherData = data;
+                    const formattedData = formatWeatherData(data);
+                    updateUI(formattedData);
+                    localStorage.setItem('lastCity', city); // Save successful city
+                } else {
+                    const message = data.error ? data.error.message : 'An unknown error occurred.';
+                    throw new Error(message);
+                }
+            } catch (error) {
+                if (attempt < MAX_RETRIES) {
+                    console.warn(`Attempt ${attempt} failed. Retrying in 1s...`);
+                    // Implementing exponential backoff with a max delay of 4 seconds
+                    const delay = Math.pow(2, attempt) * 1000;
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    fetchWeather(city, attempt + 1);
+                } else {
+                    console.error('Final fetch attempt failed:', error.message);
+                    showStatusMessage(`Could not find weather for "${city}". Please try again. (Error: ${error.message})`, 'bg-red-500/80 text-white');
+                    weatherResultDiv.classList.add('hidden');
+                }
+            }
+        }
+
+        /**
+         * Initiates the weather search based on input field.
+         */
+        function searchWeather() {
+            const city = cityInput.value.trim();
+            if (city) {
+                fetchWeather(city);
+            } else {
+                showStatusMessage('Please enter a city name.', 'bg-yellow-500/80 text-white');
+            }
+        }
+
+        /**
+         * Toggles the temperature unit between Celsius and Fahrenheit.
+         */
+        function toggleTemperatureUnit() {
+            currentUnit = currentUnit === 'C' ? 'F' : 'C';
+            localStorage.setItem('weatherUnit', currentUnit);
+
+            if (currentWeatherData) {
+                const formattedData = formatWeatherData(currentWeatherData);
+                updateUI(formattedData);
+            }
+        }
+        
+        /**
+         * Toggles the visibility of the color picker panel.
+         */
+        function toggleColorPicker() {
+            colorPickerPanel.classList.toggle('hidden');
+        }
+
+        /**
+         * Applies the selected accent color scheme.
+         * @param {string} colorName - The name of the color scheme (e.g., 'blue').
+         */
+        function applyColor(colorName) {
+            currentColor = colorName;
+            localStorage.setItem('weatherColor', currentColor);
+
+            const scheme = colorSchemes[colorName];
+            
+            // Set accent color CSS variable
+            document.documentElement.style.setProperty('--color-accent-primary', scheme.accent);
+
+            // Update all color dots to reflect selection
+            document.querySelectorAll('.color-dot').forEach(dot => {
+                dot.classList.remove('selected');
+                if (dot.getAttribute('data-color') === colorName) {
+                    dot.classList.add('selected');
+                }
+            });
+            
+            // Update the search button's text color using the dark background color
+            searchButton.style.color = 'var(--color-app-bg)';
+            
+            // Manually re-create Lucide icons to update accent-colored ones (a hacky necessity for style attributes)
+            lucide.createIcons(); 
+            
+            // Update input focus ring color
+            cityInput.style.setProperty('--tw-ring-color', scheme.accent);
+        }
+
+        /**
+         * Dynamically generates the color selection dots.
+         */
+        function generateColorDots() {
+            colorDotsContainer.innerHTML = '';
+            for (const colorName in colorSchemes) {
+                const scheme = colorSchemes[colorName];
+                const dot = document.createElement('div');
+                dot.className = `color-dot ${colorName === currentColor ? 'selected' : ''}`;
+                dot.style.backgroundColor = scheme.accent; // Use the accent color for the dot fill
+                dot.setAttribute('data-color', colorName);
+                dot.onclick = () => applyColor(colorName);
+                colorDotsContainer.appendChild(dot);
+            }
+        }
+
+        /**
+         * Shows a temporary status message.
+         * @param {string} message - The message to display.
+         * @param {string} classes - Tailwind CSS classes for styling.
+         */
+        function showStatusMessage(message, classes) {
+            statusMessage.textContent = message;
+            statusMessage.className = `text-center p-3 text-sm rounded-xl transition-all duration-300 min-h-[30px] mx-4 mb-6 ${classes}`;
+        }
+
+        /**
+         * Hides the status message and resets its style.
+         */
+        function hideStatusMessage() {
+            statusMessage.textContent = '';
+            statusMessage.className = 'text-center p-3 text-sm rounded-xl transition-all duration-300 min-h-[30px] mx-4 mb-6 bg-white/10 text-text-primary/80';
+        }
+
+        /**
+         * Helper to get UV index description.
+         * @param {number} uv - The UV index value.
+         */
+        function getUvLevelText(uv) {
+            if (uv <= 2) return 'Low';
+            if (uv <= 5) return 'Moderate';
+            if (uv <= 7) return 'High';
+            if (uv <= 10) return 'Very High';
+            return 'Extreme';
+        }
+
+        /**
+         * Helper to get Visibility status description.
+         * @param {number} km - Visibility in kilometers.
+         */
+        function getVisibilityStatus(km) {
+            if (km >= 16) return 'Excellent';
+            if (km >= 8) return 'Good';
+            if (km >= 4) return 'Moderate';
+            return 'Poor';
+        }
+
+        /**
+         * Updates the visual UV indicator dots.
+         * @param {number} uv - The UV index value.
+         */
+        function updateUvIndicator(uv) {
+            const level = Math.ceil(uv / 2.5); 
+            const dots = uvIndicator.children;
+            const colors = ['bg-green-500', 'bg-yellow-500', 'bg-orange-500', 'bg-red-500', 'bg-purple-500'];
+
+            for (let i = 0; i < dots.length; i++) {
+                if (i < level) {
+                    dots[i].className = `w-2 h-2 rounded-full ${colors[i]}`;
+                } else {
+                    dots[i].className = `w-2 h-2 rounded-full bg-gray-500 opacity-30`;
+                }
+            }
+        }
+
+        /**
+         * Initialization function.
+         */
+        function init() {
+            // Apply initial state
+            applyColor(currentColor);
+            generateColorDots();
+            
+            // Pre-fill the last searched city if available and fetch its weather
+            const lastCity = localStorage.getItem('lastCity');
+            if (lastCity) {
+                cityInput.value = lastCity;
+                fetchWeather(lastCity);
+            }
+        }
+        
+        // Add event listener for Enter key on input field
+        cityInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchWeather();
+            }
+        });
+        
+        // Initialize the app
+        init();
+        
+        // Re-render Lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
+
